@@ -1,15 +1,18 @@
 import json
 import torch
 import torch.utils.data as data
+from torch.autograd import Variable
 
 
 class Dataset(data.Dataset):
-    def __init__(self, src_path, trg_path, dictionary, max_ctxt_len=160):
+    def __init__(self, src_path, trg_path, dictionary, max_len=160):
         """Reads source and target sequences from txt files."""
-        self.src_seqs = self.preprocess(open(src_path).readlines(), dictionary)
-        self.trg_seqs = self.preprocess(open(trg_path).readlines(), dictionary)
+        self.max_len = max_len
+        self.src_seqs = open(src_path).readlines()
+        self.trg_seqs = open(trg_path).readlines()
+        self.src_seqs = [self.preprocess(line, dictionary) for line in self.src_seqs]
+        self.trg_seqs = [self.preprocess(line, dictionary) for line in self.trg_seqs]
         self.dictionary = dictionary
-        self.max_ctxt_len = max_ctxt_len
 
     def __getitem__(self, index):
         """Returns one data pair (source and target)."""
@@ -17,12 +20,15 @@ class Dataset(data.Dataset):
         trg_seq = self.trg_seqs[index]
         return src_seq, trg_seq
 
+    def __len__(self):
+        return len(self.src_seqs)
+
     def preprocess(self, sequence, dictionary):
         """Converts words to ids."""
-        tokens = sequence.strip().split()
+        tokens = sequence.strip().split()[-self.max_len:]
         sequence = []
         sequence.extend([dictionary[token] for token in tokens])
-        sequence = torch.Tensor(sequence)
+        sequence = torch.IntTensor(sequence)
         return sequence
 
 
@@ -62,7 +68,7 @@ def collate_fn(data):
     src_seqs, src_lengths = merge(src_seqs)
     trg_seqs, trg_lengths = merge(trg_seqs)
 
-    return src_seqs, src_lengths, trg_seqs, trg_lengths
+    return Variable(src_seqs, requires_grad=False).cuda(), Variable(trg_seqs, requires_grad=False).cuda()
 
 
 def get_loader(src_path, trg_path, dictionary, batch_size=200):
