@@ -84,6 +84,7 @@ EMBED_SIZE = 200
 HIDDEN_SIZE = 200
 ATTENTION_SIZE = 100
 BATCH_SIZE = 50
+TEST_BATCH_SIZE = 100
 
 #Especially in early training, the model can generate basically infinitly without generating an EOS
 #have a max sent size that you end at
@@ -245,7 +246,7 @@ for ITER in range(0):
     train.sort(key=lambda t: len(t[0]), reverse=True)
     dev.sort(key=lambda t: len(t[0]), reverse=True)
     train_order = create_batches(train, BATCH_SIZE) 
-    dev_order = create_batches(dev, BATCH_SIZE)
+    dev_order = create_batches(dev, TEST_BATCH_SIZE)
     train_words, train_loss = 0, 0.0
     start_time = time.time()
     for sent_id, (start, length) in enumerate(train_order):
@@ -276,12 +277,12 @@ for ITER in range(0):
 #model.save('./model.last')
 model.populate('./model.best')
 
-#now let's generate one sentence from test, and visualize it's attention
-count = 0
-bleu = 0
-test_order = create_batches(test, BATCH_SIZE)
+test.sort(key=lambda t: len(t[0]), reverse=True)
+test_order = create_batches(test, TEST_BATCH_SIZE)
 dev_words, dev_loss = 0, 0.0
 for sent_id, (start, length) in enumerate(test_order):
+    if sent_id % 1000 == 0:
+        print("--finished %r batches" % (sent_id))
     dev_batch = test[start:start+length]
     my_loss, num_words = calc_loss(dev_batch)
     dev_loss += my_loss.value()
@@ -289,12 +290,15 @@ for sent_id, (start, length) in enumerate(test_order):
     trainer.update()
 print("iter %r: test loss/word=%.4f, ppl=%.4f" % (ITER, dev_loss/dev_words, math.exp(dev_loss/dev_words)))
 
+#now let's generate one sentence from test, and visualize it's attention
+count = 0
+bleu = 0
 for t in test:
     if count % 1000 == 0:
         sys.stderr.write(str(count) + ' ')
     src, tgt = t[0], t[1]
     output_sent, attention_matrix = generate(src)
-    print output_sent
+    print(output_sent)
     bleu += nltk.translate.bleu_score.sentence_bleu([[i2w_trg[w] for w in tgt]], output_sent)
     count += 1
 #note: this can break for long sentences with long words
