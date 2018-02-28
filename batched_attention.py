@@ -288,7 +288,7 @@ for sent_id, (start, length) in enumerate(test_order):
     dev_loss += my_loss.value()
     dev_words += num_words
     trainer.update()
-print("iter %r: test loss/word=%.4f, ppl=%.4f" % (ITER, dev_loss/dev_words, math.exp(dev_loss/dev_words)))
+print("iter 0: test loss/word=%.4f, ppl=%.4f" % (dev_loss/dev_words, math.exp(dev_loss/dev_words)))
 
 #now let's generate one sentence from test, and visualize it's attention
 count = 0
